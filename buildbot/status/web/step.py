@@ -30,8 +30,11 @@ class StatusResourceBuildStep(HtmlResource):
         data += ":%s</h1>\n" % s.getName()
 
         if s.isFinished():
-            data += ("<h2>Finished</h2>\n"
-                     "<p>%s</p>\n" % html.escape("%s" % s.getText()))
+            text = html.escape("%s" % s.getText())
+            if hasattr(s, 'text_url'):
+                text = '<a href="%s">%s</a>' % (s.text_url, text)
+            data += ("<h2>Finished</h2>\n<p>%s</p>\n" % text)
+
         else:
             data += ("<h2>Not Finished</h2>\n"
                      "<p>ETA %s seconds</p>\n" % s.getETA())

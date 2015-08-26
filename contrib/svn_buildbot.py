@@ -22,7 +22,7 @@
 . ~/.environment
 
 /path/to/svn_buildbot.py --repository "$REPOS" --revision "$REV" \
---bbserver localhost --bbport 9989
+--bbserver localhost --bbport 9989 --category <category>
 '''
 
 import commands
@@ -62,6 +62,7 @@ class Options(usage.Options):
          "The repository that was changed."],
         ['revision', 'v', None,
          "The revision that we want to examine (default: latest)"],
+        ['category', 'c', None, "The change category"],
         ['bbserver', 's', 'localhost',
          "The hostname of the server that buildbot is running on"],
         ['bbport', 'p', 8007,
@@ -201,7 +202,9 @@ class ChangeSender:
                  'branch': branch,
                  'files': files_per_branch[branch],
                  'comments': message,
-                 'revision': revision}
+                 'revision': revision,
+                 'category': opts['category'],
+                 'repo': repo}
             changes.append(d)
 
         return changes

@@ -6,8 +6,8 @@ from twisted.spread import pb
 from twisted.python import log
 from buildbot.process.buildstep import RemoteCommand, BuildStep
 from buildbot.process.buildstep import SUCCESS, FAILURE
+from buildbot.process.properties import WithProperties
 from buildbot.interfaces import BuildSlaveTooOldError
-
 
 class _FileWriter(pb.Referenceable):
     """

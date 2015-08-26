@@ -270,9 +270,9 @@ class DebugPerspective(NewCredPerspective):
         bc.ping()
 
     def perspective_fakeChange(self, file, revision=None, who="fakeUser",
-                               branch=None):
+                               branch=None, category=None):
         change = Change(who, [file], "some fake comments\n",
-                        branch=branch, revision=revision)
+                        branch=branch, revision=revision, category=category)
         c = interfaces.IControl(self.master)
         c.addChange(change)
 

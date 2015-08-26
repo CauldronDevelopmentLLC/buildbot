@@ -135,6 +135,8 @@ class DebugWidget:
             return
         filename = self.filename.get_text()
         who = self.xml.get_widget("who").get_text()
+        category = self.xml.get_widget("category").get_text()
+        if category == '': category = None
 
         branch = None
         if self.xml.get_widget("usebranch").get_active():
@@ -155,6 +157,8 @@ class DebugWidget:
         kwargs = { 'revision': revision, 'who': who }
         if branch:
             kwargs['branch'] = branch
+        if category:
+             kwargs['category'] = category
         d = self.remote.callRemote("fakeChange", filename, **kwargs)
         d.addErrback(self.err)
 

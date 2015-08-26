@@ -36,6 +36,9 @@ class ChangePerspective(NewCredPerspective):
                                     revision=changedict.get('revision'),
                                     category=changedict.get('category'),
                                     )
+            if 'repo' in changedict:
+                change.repo = changedict.get('repo')
+
             self.changemaster.addChange(change)
 
 class PBChangeSource(base.ChangeSource):

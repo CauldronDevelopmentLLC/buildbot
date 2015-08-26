@@ -416,7 +416,7 @@ class WaterfallStatusResource(HtmlResource):
         if "reload" in request.args:
             try:
                 reload_time = int(request.args["reload"][0])
-                return max(reload_time, 15)
+                return max(reload_time, 5)
             except ValueError:
                 pass
         return None
@@ -446,6 +446,11 @@ class WaterfallStatusResource(HtmlResource):
         allBuilderNames = status.getBuilderNames(categories=self.categories)
         builders = [status.getBuilder(name) for name in allBuilderNames]
 
+        # Filter and sort builders
+        if "online" in request.args:
+            builders = filter(lambda b: b.getState()[0] != "offline", builders)
+        builders.sort(lambda b1, b2: cmp(b1.getName(), b2.getName()))
+
         # but if the URL has one or more builder= arguments (or the old show=
         # argument, which is still accepted for backwards compatibility), we
         # use that set of builders instead. We still don't show anything
@@ -454,6 +459,14 @@ class WaterfallStatusResource(HtmlResource):
         showBuilders.extend(request.args.get("builder", []))
         if showBuilders:
             builders = [b for b in builders if b.name in showBuilders]
+
+        builderPrefix = request.args.get('builder-prefix', [False])[0]
+        if builderPrefix:
+            builders = [b for b in builders if b.name.startswith(builderPrefix)]
+
+        builderSuffix = request.args.get('builder-suffix', [False])[0]
+        if builderSuffix:
+            builders = [b for b in builders if b.name.endswith(builderSuffix)]
 
         # now, if the URL has one or category= arguments, use them as a
         # filter: only show those builders which belong to one of the given
@@ -677,7 +690,8 @@ class WaterfallStatusResource(HtmlResource):
             return event
 
         for s in sources:
-            gen = insertGaps(s.eventGenerator(filterBranches), lastEventTime)
+            gen = s.eventGenerator(filterBranches)
+            gen = insertGaps(gen, lastEventTime)
             sourceGenerators.append(gen)
             # get the first event
             sourceEvents.append(get_event_from(gen))

@@ -57,7 +57,7 @@ class SVNPoller(base.ChangeSource, util.ComparableMixin):
     def __init__(self, svnurl, split_file=None,
                  svnuser=None, svnpasswd=None,
                  pollinterval=10*60, histmax=100,
-                 svnbin='svn'):
+                 svnbin='svn', category=None):
         """
         @type  svnurl: string
         @param svnurl: the SVN URL that describes the repository and
@@ -163,6 +163,9 @@ class SVNPoller(base.ChangeSource, util.ComparableMixin):
         @param svnbin:       path to svn binary, defaults to just 'svn'. Use
                              this if your subversion command lives in an
                              unusual location.
+
+        @type  category:     string
+        @param category:     used to filter changes in the Scheduler.
         """
 
         if svnurl.endswith("/"):
@@ -173,6 +176,7 @@ class SVNPoller(base.ChangeSource, util.ComparableMixin):
         self.svnpasswd = svnpasswd
 
         self.svnbin = svnbin
+        self.category = category
         self.pollinterval = pollinterval
         self.histmax = histmax
         self._prefix = None
@@ -439,7 +443,8 @@ class SVNPoller(base.ChangeSource, util.ComparableMixin):
                                files=files,
                                comments=comments,
                                revision=revision,
-                               branch=branch)
+                               branch=branch,
+                               category=self.category)
                     changes.append(c)
 
         return changes

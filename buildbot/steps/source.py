@@ -587,7 +587,7 @@ class Git(Source):
 
     name = "git"
 
-    def __init__(self, repourl, branch="master", **kwargs):
+    def __init__(self, repourl, branch="master", submodules=False, **kwargs):
         """
         @type  repourl: string
         @param repourl: the URL which points at the git repository
@@ -596,11 +596,16 @@ class Git(Source):
         @param branch: The branch or tag to check out by default. If
                        a build specifies a different branch, it will
                        be used instead of this.
+
+        @type  submodules: boolean
+        @param submodules: True of git submodules are enabled.
         """
         Source.__init__(self, **kwargs)
-        self.addFactoryArguments(repourl=repourl, branch=branch)
+        self.addFactoryArguments(repourl=repourl, branch=branch,
+                                 submodules=submodules)
         self.args.update({'repourl': repourl,
-                          'branch': branch})
+                          'branch': branch,
+                          'submodules': submodules})
 
     def computeSourceRevision(self, changes):
         if not changes:

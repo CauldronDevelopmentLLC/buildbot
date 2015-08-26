@@ -13,8 +13,10 @@ from buildbot import interfaces, util
 html_tmpl = """
 <p>Changed by: <b>%(who)s</b><br />
 Changed at: <b>%(at)s</b><br />
-%(branch)s
-%(revision)s
+Repository: <b>%(repo)s</b><br/>
+Category: <b>%(category)s</b><br/>
+Branch: <b>%(branch)s</b><br/>
+Revision: <b>%(revision)s</b><br/>
 <br />
 
 Changed files:
@@ -54,7 +56,8 @@ class Change:
     revision = None # used to create a source-stamp
 
     def __init__(self, who, files, comments, isdir=0, links=[],
-                 revision=None, when=None, branch=None, category=None):
+                 revision=None, when=None, branch=None, category=None,
+                 repo=None):
         self.who = who
         self.comments = comments
         self.isdir = isdir
@@ -65,6 +68,7 @@ class Change:
         self.when = when
         self.branch = branch
         self.category = category
+        self.repo = repo
 
         # keep a sorted list of the files, for easier display
         self.files = files[:]
@@ -75,7 +79,10 @@ class Change:
         data += self.getFileContents() 
         data += "At: %s\n" % self.getTime()
         data += "Changed By: %s\n" % self.who
-        data += "Comments: %s\n\n" % self.comments
+        if self.category: cat = self.category
+        else: cat = 'None'
+        data += "Category: %s\n" % cat
+        data += "Comments: %s\n" % self.comments
         return data
 
     def asHTML(self):
@@ -87,19 +94,27 @@ class Change:
                 links.append('<a href="%s"><b>%s</b></a>' % (link[0], file))
             else:
                 links.append('<b>%s</b>' % file)
-        revision = ""
-        if self.revision:
-            revision = "Revision: <b>%s</b><br />\n" % self.revision
-        branch = ""
-        if self.branch:
-            branch = "Branch: <b>%s</b><br />\n" % self.branch
 
-        kwargs = { 'who'     : html.escape(self.who),
-                   'at'      : self.getTime(),
-                   'files'   : html.UL(links) + '\n',
-                   'revision': revision,
-                   'branch'  : branch,
-                   'comments': html.PRE(self.comments) }
+        if self.revision: revision = str(self.revision)
+        else: revision = ''
+        if self.branch: branch = html.escape(self.branch)
+        else: branch = ''
+
+        if self.repo is None: repo = 'unknown'
+        else: repo = html.escape(self.repo)
+
+        if self.category is None: category = ''
+        else: category = html.escape(self.category)
+
+        kwargs = { 'who'      : html.escape(self.who),
+                   'at'       : self.getTime(),
+                   'files'    : html.UL(links) + '\n',
+                   'revision' : revision,
+                   'branch'   : branch,
+                   'comments' : html.PRE(self.comments),
+                   'repo'     : repo,
+                   'category' : category,
+                   }
         return html_tmpl % kwargs
 
     def get_HTML_box(self, url):

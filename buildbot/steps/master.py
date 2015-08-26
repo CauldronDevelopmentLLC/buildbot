@@ -4,6 +4,7 @@ from twisted.internet import reactor, defer, task
 from buildbot.process.buildstep import RemoteCommand, BuildStep
 from buildbot.process.buildstep import SUCCESS, FAILURE
 from twisted.internet.protocol import ProcessProtocol
+from buildbot.process.properties import WithProperties
 
 class MasterShellCommand(BuildStep):
     """
@@ -15,16 +16,20 @@ class MasterShellCommand(BuildStep):
     description='Running'
     descriptionDone='Ran'
 
-    def __init__(self, command, **kwargs):
+    def __init__(self, command, property = None, url = None, **kwargs):
         BuildStep.__init__(self, **kwargs)
-        self.addFactoryArguments(command=command)
+        self.addFactoryArguments(command=command, property=property, url=url)
         self.command=command
+        self.property=property
+        self.property_value=''
+        self.url=url
 
     class LocalPP(ProcessProtocol):
         def __init__(self, step):
             self.step = step
 
         def outReceived(self, data):
+            self.step.outReceived(data)
             self.step.stdio_log.addStdout(data)
 
         def errReceived(self, data):
@@ -35,30 +40,35 @@ class MasterShellCommand(BuildStep):
             self.step.processEnded(status_object)
 
     def start(self):
+        if isinstance(self.command, WithProperties):
+            properties = self.build.getProperties()
+            command = properties.render(self.command)
+        else: command = self.command
+
         # set up argv
-        if type(self.command) in types.StringTypes:
+        if type(command) in types.StringTypes:
             if runtime.platformType  == 'win32':
                 argv = os.environ['COMSPEC'].split() # allow %COMSPEC% to have args
                 if '/c' not in argv: argv += ['/c'] 
-                argv += [self.command]
+                argv += [command]
             else:
                 # for posix, use /bin/sh. for other non-posix, well, doesn't
                 # hurt to try
-                argv = ['/bin/sh', '-c', self.command]
+                argv = ['/bin/sh', '-c', command]
         else:
             if runtime.platformType  == 'win32':
                 argv = os.environ['COMSPEC'].split() # allow %COMSPEC% to have args
                 if '/c' not in argv: argv += ['/c'] 
-                argv += list(self.command)
+                argv += list(command)
             else:
-                argv = self.command
+                argv = command
 
         self.stdio_log = stdio_log = self.addLog("stdio")
 
-        if type(self.command) in types.StringTypes:
-            stdio_log.addHeader(self.command.strip() + "\n\n")
+        if type(command) in types.StringTypes:
+            stdio_log.addHeader(command.strip() + "\n\n")
         else:
-            stdio_log.addHeader(" ".join(self.command) + "\n\n")
+            stdio_log.addHeader(" ".join(command) + "\n\n")
         stdio_log.addHeader("** RUNNING ON BUILDMASTER **\n")
         stdio_log.addHeader(" in dir %s\n" % os.getcwd())
         stdio_log.addHeader(" argv: %s\n" % (argv,))
@@ -67,7 +77,21 @@ class MasterShellCommand(BuildStep):
         proc = reactor.spawnProcess(self.LocalPP(self), argv[0], argv)
         # (the LocalPP object will call processEnded for us)
 
+    def outReceived(self, data):
+        if self.property is not None: self.property_value += data
+
     def processEnded(self, status_object):
+        if self.property is not None:
+            propname = self.build.getProperties().render(self.property)
+            self.setProperty(propname, self.property_value,
+                             'MasterShellCommand Step')
+
+        if self.url is not None:
+            properties = self.build.getProperties()
+            name = properties.render(WithProperties(self.url[0]))
+            url = properties.render(WithProperties(self.url[1]))
+            self.step_status.addURL(name, url)
+
         if status_object.value.exitCode != 0:
             self.step_status.setText(["failed (%d)" % status_object.value.exitCode])
             self.finished(FAILURE)

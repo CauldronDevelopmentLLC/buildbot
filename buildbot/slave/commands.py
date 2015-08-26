@@ -1992,6 +1992,7 @@ class Git(SourceBase):
     ['repourl'] (required): the upstream GIT repository string
     ['branch'] (optional): which version (i.e. branch or tag) to
                            retrieve. Default: "master".
+    ['submodules'] (optional): handle submodules.  Default: False.
     """
 
     header = "git operation"
@@ -2002,6 +2003,7 @@ class Git(SourceBase):
         self.branch = args.get('branch')
         if not self.branch:
             self.branch = "master"
+        self.submodules = args.get('submodules', False)
         self.sourcedata = "%s %s\n" % (self.repourl, self.branch)
 
     def _fullSrcdir(self):
@@ -2064,14 +2066,39 @@ class Git(SourceBase):
             self.command = c
             d = c.start()
             d.addCallback(self._abandonOnFailure)
-            d.addCallback(self._didClean)
+            if self.submodules: d.addCallback(self._doCleanSubmodules)
+            else: d.addCallback(self._didClean)
             return d
         return self._didClean(None)
+
+    def _doCleanSubmodules(self, dummy):
+        command = ['git', 'submodule', 'foreach', '--recursive', 'git', 'clean',
+                   '-f', '-d']
+        c = ShellCommand(self.builder, command, self._fullSrcdir(),
+                         sendRC=False, timeout=self.timeout, usePTY=False)
+        self.command = c
+        d = c.start()
+        d.addCallback(self._abandonOnFailure)
+        d.addCallback(self._didClean)
+        return d
 
     def _didClean(self, dummy):
         command = ['git', 'fetch', '-t', self.repourl, self.branch]
         self.sendStatus({"header": "fetching branch %s from %s\n"
                                         % (self.branch, self.repourl)})
+        c = ShellCommand(self.builder, command, self._fullSrcdir(),
+                         sendRC=False, timeout=self.timeout, usePTY=False)
+        self.command = c
+        d = c.start()
+        d.addCallback(self._abandonOnFailure)
+        if self.submodules: d.addCallback(self._doUpdateSubmodules)
+        else: d.addCallback(self._didFetch)
+        return d
+
+    def _doUpdateSubmodules(self, res):
+        command = ['git', 'submodule', 'update', '--recursive', '--init',
+                   '--force']
+        self.sendStatus({"header": "updating submodules\n"})
         c = ShellCommand(self.builder, command, self._fullSrcdir(),
                          sendRC=False, timeout=self.timeout, usePTY=False)
         self.command = c
@@ -2084,6 +2111,7 @@ class Git(SourceBase):
         return self.doVCUpdate()
 
     def doVCFull(self):
+        if os.path.exists(self._fullSrcdir()): shutil.rmtree(self.fullSrcdir())
         os.mkdir(self._fullSrcdir())
         c = ShellCommand(self.builder, ['git', 'init'], self._fullSrcdir(),
                          sendRC=False, timeout=self.timeout, usePTY=False)
