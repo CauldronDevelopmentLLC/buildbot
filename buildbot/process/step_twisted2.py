@@ -8,7 +8,10 @@ from twisted.python import log, failure
 from twisted.spread import jelly
 from twisted.pb.tokens import BananaError
 from twisted.web.html import PRE
-from twisted.web.error import NoResource
+try:
+    from twisted.web.error import NoResource
+except ImportError:
+    from twisted.web.error import Error as NoResource
 
 class Null: pass
 ResultTypes = Null()

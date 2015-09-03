@@ -1,6 +1,9 @@
 
 from twisted.web import resource
-from twisted.web.error import NoResource
+try:
+    from twisted.web.error import NoResource
+except ImportError:
+    from twisted.web.error import Error as NoResource
 
 # these are our test result types. Steps are responsible for mapping results
 # into these values.

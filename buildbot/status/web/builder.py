@@ -1,5 +1,7 @@
-
-from twisted.web.error import NoResource
+try:
+    from twisted.web.error import NoResource
+except ImportError:
+    from twisted.web.error import Error as NoResource
 from twisted.web import html, static
 from twisted.web.util import Redirect
 
