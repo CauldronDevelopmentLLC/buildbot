@@ -4,6 +4,7 @@ from zope.interface import implements
 from twisted.python import log
 from twisted.persisted import styles
 from twisted.internet import reactor, defer, threads
+import twisted.internet.interfaces
 from twisted.protocols import basic
 from buildbot.process.properties import Properties
 
@@ -41,11 +42,24 @@ STDOUT = interfaces.LOG_CHANNEL_STDOUT
 STDERR = interfaces.LOG_CHANNEL_STDERR
 HEADER = interfaces.LOG_CHANNEL_HEADER
 ChunkTypes = ["stdout", "stderr", "header"]
+class NullAddress(object):
+    "an address for NullTransport"
+    implements(twisted.internet.interfaces.IAddress)
+	
+class NullTransport(object):
+    "a do-nothing transport to make NetstringReceiver happy"
+    implements(twisted.internet.interfaces.ITransport)
+    def write(self, data): raise NotImplementedError
+    def writeSequence(self, data): raise NotImplementedError
+    def loseConnection(self): pass
+    def getPeer(self): return NullAddress
+    def getHost(self): return NullAddress
 
 class LogFileScanner(basic.NetstringReceiver):
     def __init__(self, chunk_cb, channels=[]):
         self.chunk_cb = chunk_cb
         self.channels = channels
+        self.makeConnection(NullTransport())
 
     def stringReceived(self, line):
         channel = int(line[0])
