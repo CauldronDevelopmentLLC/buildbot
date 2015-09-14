@@ -108,7 +108,7 @@ class Change:
 
         kwargs = { 'who'      : html.escape(self.who),
                    'at'       : self.getTime(),
-                   'files'    : html.UL(links) + '\n',
+                   'files'    : html.UL(map(str, links)) + '\n',
                    'revision' : revision,
                    'branch'   : branch,
                    'comments' : html.PRE(self.comments),
