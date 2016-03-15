@@ -1,4 +1,3 @@
-
 from zope.interface import implements
 from twisted.python import components
 from twisted.spread import pb
@@ -47,7 +46,7 @@ class ChunkConsumer:
     def writeChunk(self, chunk):
         formatted = self.textlog.content([chunk])
         try:
-            self.original.write(formatted)
+            self.original.write(formatted.encode('utf-8'))
         except pb.DeadReferenceError:
             self.producing.stopProducing()
     def finish(self):
