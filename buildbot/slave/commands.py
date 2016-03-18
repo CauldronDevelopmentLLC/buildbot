@@ -2047,7 +2047,12 @@ class Git(SourceBase):
         c = ShellCommand(self.builder, command, self._fullSrcdir(),
                          sendRC=False, timeout=self.timeout, usePTY=False)
         self.command = c
-        return c.start()
+        d = c.start()
+        if self.submodules:
+            d.addCallback(self._abandonOnFailure)
+            d.addCallback(self._doUpdateSubmodules)
+        return d
+
 
     # Update first runs "git clean", removing local changes,
     # if the branch to be checked out has changed.  This, combined
@@ -2091,8 +2096,7 @@ class Git(SourceBase):
         self.command = c
         d = c.start()
         d.addCallback(self._abandonOnFailure)
-        if self.submodules: d.addCallback(self._doUpdateSubmodules)
-        else: d.addCallback(self._didFetch)
+        d.addCallback(self._didFetch)
         return d
 
     def _doUpdateSubmodules(self, res):
@@ -2102,10 +2106,7 @@ class Git(SourceBase):
         c = ShellCommand(self.builder, command, self._fullSrcdir(),
                          sendRC=False, timeout=self.timeout, usePTY=False)
         self.command = c
-        d = c.start()
-        d.addCallback(self._abandonOnFailure)
-        d.addCallback(self._didFetch)
-        return d
+        return c.start()
 
     def _didInit(self, res):
         return self.doVCUpdate()
