@@ -393,12 +393,15 @@ class BotFactory(ReconnectingPBClientFactory):
             self.startTimers()
 
     def clientConnectionFailed(self, connector, reason):
-        log.msg("Connection failed: " + str(reason))
+        log.msg("Connection to %s:%s failed: %s" % (
+                connector.host, connector.port, reason))
         self.connector = None
         ReconnectingPBClientFactory.clientConnectionFailed(self,
                                                            connector, reason)
 
     def clientConnectionLost(self, connector, reason):
+        log.msg("Connection to %s:%s lost: %s" % (
+                connector.host, connector.port, reason))
         self.connector = None
         self.stopTimers()
         self.perspective = None
