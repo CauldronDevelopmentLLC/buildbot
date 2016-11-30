@@ -15,7 +15,6 @@ import urllib
 
 from zope.interface import implements
 from twisted.internet import defer
-from twisted.mail.smtp import sendmail
 from twisted.python import log as twlog
 
 from buildbot import interfaces, util
@@ -519,6 +518,7 @@ class MailNotifier(base.StatusReceiverMultiService):
         return self.sendMessage(m, list(recipients))
 
     def sendMessage(self, m, recipients):
+        from twisted.mail.smtp import sendmail
         s = m.as_string()
         twlog.msg("sending mail (%d bytes) to" % len(s), recipients)
         return sendmail(self.relayhost, self.fromaddr, recipients, s)
