@@ -9,6 +9,42 @@ from buildbot.process.buildstep import SUCCESS, FAILURE
 from buildbot.process.properties import WithProperties
 from buildbot.interfaces import BuildSlaveTooOldError
 
+class _PropertyWriter(pb.Referenceable):
+    """
+    Helper class that acts as a file-object with write access
+    """
+
+    def __init__(self, step, name, maxsize, strip):
+        self.step = step
+        self.name = name
+        self.remaining = maxsize
+        self.strip = strip
+        self.value = ''
+
+    def remote_write(self, data):
+	"""
+	Called from remote slave to write L{data} to L{fp} within boundaries
+	of L{maxsize}
+
+	@type  data: C{string}
+	@param data: String of data to write
+	"""
+        if self.remaining is not None:
+            if len(data) > self.remaining:
+                data = data[:self.remaining]
+            self.value += data
+            self.remaining = self.remaining - len(data)
+        else:
+            self.value += data
+
+    def remote_close(self):
+        """
+        Called by remote slave to state that no more data will be transfered
+        """
+
+        if self.strip: self.value = self.value.strip()
+        self.step.setProperty(self.name, self.value, 'File Upload Step')
+
 class _FileWriter(pb.Referenceable):
     """
     Helper class that acts as a file-object with write access
@@ -181,25 +217,32 @@ class FileUpload(_TransferBuildStep):
 
     name = 'upload'
 
-    def __init__(self, slavesrc, masterdest,
+    def __init__(self, slavesrc, masterdest=None, property=None,
                  workdir=None, maxsize=None, blocksize=16*1024, mode=None,
-                 **buildstep_kwargs):
+                 strip=True, **buildstep_kwargs):
         BuildStep.__init__(self, **buildstep_kwargs)
         self.addFactoryArguments(slavesrc=slavesrc,
                                  masterdest=masterdest,
+                                 property=property,
                                  workdir=workdir,
                                  maxsize=maxsize,
                                  blocksize=blocksize,
                                  mode=mode,
+                                 strip=strip,
                                  )
 
         self.slavesrc = slavesrc
         self.masterdest = masterdest
+        self.property = property
         self.workdir = workdir
         self.maxsize = maxsize
         self.blocksize = blocksize
         assert isinstance(mode, (int, type(None)))
         self.mode = mode
+        self.strip = strip
+
+        assert self.masterdest or self.property, \
+            "FileUpload step needs either masterdest= or property="
 
     def start(self):
         version = self.slaveVersion("uploadFile")
@@ -210,25 +253,34 @@ class FileUpload(_TransferBuildStep):
             raise BuildSlaveTooOldError(m)
 
         source = properties.render(self.slavesrc)
-        masterdest = properties.render(self.masterdest)
-        # we rely upon the fact that the buildmaster runs chdir'ed into its
-        # basedir to make sure that relative paths in masterdest are expanded
-        # properly. TODO: maybe pass the master's basedir all the way down
-        # into the BuildStep so we can do this better.
-        masterdest = os.path.expanduser(masterdest)
-        log.msg("FileUpload started, from slave %r to master %r"
-                % (source, masterdest))
-
         self.step_status.setText(['uploading', os.path.basename(source)])
 
-        # we use maxsize to limit the amount of data on both sides
-        fileWriter = _FileWriter(masterdest, self.maxsize, self.mode)
+        if self.masterdest:
+            masterdest = properties.render(self.masterdest)
+            # we rely upon the fact that the buildmaster runs chdir'ed into its
+            # basedir to make sure relative paths in masterdest are expanded
+            # properly. TODO: maybe pass the master's basedir all the way down
+            # into the BuildStep so we can do this better.
+            masterdest = os.path.expanduser(masterdest)
+            log.msg("FileUpload started, from slave %r to master %r"
+                    % (source, masterdest))
+
+            # we use maxsize to limit the amount of data on both sides
+            writer = _FileWriter(masterdest, self.maxsize, self.mode)
+
+        else:
+            property = properties.render(self.property)
+
+            log.msg("FileUpload started, from slave %r to master property %r"
+                    % (source, property))
+
+            writer = _PropertyWriter(self, property, self.maxsize, self.strip)
 
         # default arguments
         args = {
             'slavesrc': source,
             'workdir': self._getWorkdir(),
-            'writer': fileWriter,
+            'writer': writer,
             'maxsize': self.maxsize,
             'blocksize': self.blocksize,
             }
