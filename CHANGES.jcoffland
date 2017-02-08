@@ -1,0 +1,14 @@
+- Added category to Change
+- Added category support PBChangeSource and SVNPoller
+- Added category to changes comments
+- Added category to debug client
+- Support filtering by online slaves in waterfall
+- Sort waterfall by builder name
+- Support for WithProperties in MasterShellCommand
+- Send 'repo' from svn_buildbot.py and add to Change
+- Display 'repo' in Change HTML view
+- Added category support to svn_buildbot.py
+- Updated NoResource import for newer twisted
+- More details in log on connection failed/lost
+- Don't require twistd.mail.smtp unless it's used
+- Added ability to FileUpload to a property
