@@ -126,9 +126,9 @@ class BuildBox(components.Adapter):
         reason = b.getReason()
         text = '<a title="Reason: %s" href="%s">Build %d</a>' % (
             html.escape(reason), url, number)
-        if b.getState() == 'building':
+        if not b.isFinished():
             text += "<button onclick=\"stop_build('%s', %d)\">Stop</button>" % (
-                b.name, number)
+                b.getBuilder().name, number)
         class_ = "start"
         if b.isFinished() and not b.getSteps():
             # the steps have been pruned, so there won't be any indication
