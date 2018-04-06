@@ -12,3 +12,4 @@
 - More details in log on connection failed/lost
 - Don't require twistd.mail.smtp unless it's used
 - Added ability to FileUpload to a property
+- Added force build buttons to waterfall display

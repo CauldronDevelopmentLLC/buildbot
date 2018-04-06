@@ -111,7 +111,9 @@ class BuildTopBox(components.Adapter):
         # TODO: add link to the per-build page at 'url'
         class_ = build_get_class(b)
         return Box(text, class_="LastBuild %s" % class_)
+
 components.registerAdapter(BuildTopBox, builder.BuilderStatus, ITopBox)
+
 
 class BuildBox(components.Adapter):
     # this provides the yellow "starting line" box for each build
@@ -122,15 +124,20 @@ class BuildBox(components.Adapter):
         number = b.getNumber()
         url = path_to_build(req, b)
         reason = b.getReason()
-        text = ('<a title="Reason: %s" href="%s">Build %d</a>'
-                % (html.escape(reason), url, number))
+        text = '<a title="Reason: %s" href="%s">Build %d</a>' % (
+            html.escape(reason), url, number)
+        if b.getState() == 'building':
+            text += "<button onclick=\"stop_build('%s', %d)\">Stop</button>" % (
+                b.name, number)
         class_ = "start"
         if b.isFinished() and not b.getSteps():
             # the steps have been pruned, so there won't be any indication
             # of whether it succeeded or failed.
             class_ = build_get_class(b)
-        return Box([text], class_="BuildStep " + class_)
+        return Box(text, class_="BuildStep " + class_)
+
 components.registerAdapter(BuildBox, builder.BuildStatus, IBox)
+
 
 class StepBox(components.Adapter):
     implements(IBox)
@@ -168,7 +175,7 @@ class EventBox(components.Adapter):
         class_ = "Event"
         return Box(text, class_=class_)
 components.registerAdapter(EventBox, builder.Event, IBox)
-        
+
 
 class Spacer:
     implements(interfaces.IStatusEvent)
@@ -191,7 +198,7 @@ class SpacerBox(components.Adapter):
         b.spacer = True
         return b
 components.registerAdapter(SpacerBox, Spacer, IBox)
-    
+
 def insertGaps(g, lastEventTime, idleGap=2):
     debug = False
 
@@ -506,7 +513,14 @@ class WaterfallStatusResource(HtmlResource):
             box = ICurrentBox(b).getBox(status)
             data += box.td(align="center")
         data += " </tr>\n"
-        
+
+        data += ' <tr class="Actions">\n'
+        data += td('actions', align='right', colspan=2)
+        for name in builderNames:
+            text = "<button onclick=\"force_build('%s')\">build</button>" % name
+            data += td(text, align = 'center', class_ = 'BuilderActions')
+        data += " </tr>\n"
+
         data += " <tr>\n"
         TZ = time.tzname[time.localtime()[-1]]
         data += td("time (%s)" % TZ, align="center", class_="Time")
@@ -592,6 +606,24 @@ class WaterfallStatusResource(HtmlResource):
                                time.localtime(util.now()))
                  + "\n")
         data += '</div>\n'
+
+        data += "<script type='text/javascript'>\n"
+        data += "  function force_build(name) {\n"
+        data += "    var xhr = new XMLHttpRequest();\n"
+        data += "    xhr.open('GET', 'builders/' + name + '/force');\n"
+        data += "    xhr.addEventListener('load', function () {\n"
+        data += "      location.reload();\n"
+        data += "    });\n"
+        data += "    xhr.send();\n"
+        data += "  }\n"
+        data += "\n"
+        data += "  function stop_build(name, number) {\n"
+        data += "    var xhr = new XMLHttpRequest();\n"
+        data += "    xhr.open('GET', 'builders/' + name + '/builds/' + "
+        data += "number + '/stop');\n"
+        data += "    xhr.send();\n"
+        data += "  }\n"
+        data += "</script>\n"
         return data
 
     def body0(self, request, builders):
@@ -600,7 +632,7 @@ class WaterfallStatusResource(HtmlResource):
         data += "<h2>Basic display</h2>\n"
         data += '<p>See <a href="%s">here</a>' % request.childLink("../waterfall")
         data += " for the waterfall display</p>\n"
-                
+
         data += '<table border="0" cellspacing="0">\n'
         names = map(lambda builder: builder.name, builders)
 
@@ -636,7 +668,7 @@ class WaterfallStatusResource(HtmlResource):
 
         data += "</table>\n"
         return data
-    
+
     def buildGrid(self, request, builders):
         debug = False
         # TODO: see if we can use a cached copy
@@ -659,7 +691,7 @@ class WaterfallStatusResource(HtmlResource):
         # first step is to walk backwards in time, asking each column
         # (commit, all builders) if they have any events there. Build up the
         # array of events, and stop when we have a reasonable number.
-            
+
         commit_source = self.getChangemaster(request)
 
         lastEventTime = util.now()
