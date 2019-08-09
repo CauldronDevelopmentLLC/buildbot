@@ -245,7 +245,7 @@ class HtmlResource(resource.Resource):
 
         data = self.content(request)
         if isinstance(data, unicode):
-            data = data.encode("utf-8")
+            data = unicode(data, 'utf-8')
         request.setHeader("content-type", self.contentType)
         if request.method == "HEAD":
             request.setHeader("content-length", len(data))

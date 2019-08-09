@@ -14,3 +14,4 @@
 - Added ability to FileUpload to a property
 - Added force build buttons to waterfall display
 - Added stop button to builds in waterfall display
+- Handle utf-8
