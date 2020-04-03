@@ -15,3 +15,4 @@
 - Added force build buttons to waterfall display
 - Added stop button to builds in waterfall display
 - Handle utf-8
+- Save environment variables to script on slave

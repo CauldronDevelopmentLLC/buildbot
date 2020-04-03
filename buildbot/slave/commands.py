@@ -442,6 +442,22 @@ class ShellCommand:
             log.msg(" environment: %s" % (self.environ,))
             self.sendStatus({'header': msg})
 
+        # Save environment variables to script
+        keys = self.environ.keys()
+        keys.sort()
+        if runtime.platformType  == 'win32':
+            with open(self.workdir + '/env.bat', 'w') as f:
+                f.write('@echo off\n')
+                for key in keys:
+                    f.write('set %s=%s\n' % (key, self.environ[key]))
+        else:
+            with open(self.workdir + '/env', 'w') as f:
+                for key in keys:
+                    value = self.environ[key]
+                    value = value.replace('\\', '\\\\')
+                    value = value.replace('"', '\\"')
+                    f.write('export %s="%s"\n' % (key, value))
+
         if self.initialStdin:
             msg = " writing %d bytes to stdin" % len(self.initialStdin)
             log.msg(" " + msg)
